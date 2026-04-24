@@ -1,0 +1,194 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Calculadora Científica</title>
+
+<!--
+ATENÇÃO: Desenvolvi esse código intuindo aplicar alguns conhecimentos de engenharia de prompt que adquiri, ou seja, este código foi desenvolvido usando Inteligência Artificial - Nota de Guilherme ASF.
+-->
+
+<style>
+:root {
+  --bg:#eef2ff; --card:#fff; --accent:#6366f1; --accent2:#22c55e; --danger:#ef4444; --text:#0f172a;
+}
+[data-theme="dark"]{
+  --bg:#0f172a; --card:#111827; --text:#e5e7eb;
+}
+*{margin:0;padding:0;box-sizing:border-box;font-family:system-ui,Arial;}
+body{background:var(--bg);display:flex;justify-content:center;align-items:center;height:100vh;transition:.3s}
+.app{width:370px;background:var(--card);border-radius:20px;padding:15px;box-shadow:0 20px 40px rgba(0,0,0,.2)}
+.top{display:flex;justify-content:space-between;margin-bottom:10px}
+.display{background:#020617;color:#22c55e;font-size:2rem;padding:12px;border-radius:10px;text-align:right;margin-bottom:10px}
+.buttons{display:grid;grid-template-columns:repeat(5,1fr);gap:8px}
+button{padding:12px;border:none;border-radius:10px;background:#e2e8f0;cursor:pointer}
+button:active{transform:scale(.95)}
+.operator{background:var(--accent);color:#fff}
+.equal{background:var(--accent2);color:#fff}
+.clear{background:var(--danger);color:#fff}
+
+/* Histórico com animação */
+.history{
+  margin-top:10px;
+  max-height:0;
+  overflow:hidden;
+  font-size:.8rem;
+  opacity:0;
+  transition: max-height .4s ease, opacity .3s ease;
+}
+.history.open{
+  max-height:150px;
+  opacity:1;
+  overflow:auto;
+}
+.history-header{
+  display:flex;
+  justify-content:space-between;
+  align-items:center;
+  margin-bottom:5px;
+}
+.clear-history{
+  background:var(--danger);
+  color:#fff;
+  padding:5px 8px;
+  font-size:.7rem;
+}
+</style>
+</head>
+<body data-theme="light">
+
+<div class="app">
+<div class="top">
+  <span>Calculadora</span>
+  <div>
+    <button onclick="toggleHistory()">📜</button>
+    <button onclick="toggleTheme()">🌗</button>
+  </div>
+</div>
+
+<div id="display" class="display">0</div>
+
+<div class="buttons">
+<button class="clear" onclick="clearDisplay()">C</button>
+<button onclick="append('(')">(</button>
+<button onclick="append(')')">)</button>
+<button onclick="append('%')">%</button>
+<button onclick="backspace()">←</button>
+
+<button onclick="append('sin(')">sin</button>
+<button onclick="append('cos(')">cos</button>
+<button onclick="append('tan(')">tan</button>
+<button onclick="append('log(')">log</button>
+<button onclick="append('ln(')">ln</button>
+
+<button onclick="append('7')">7</button>
+<button onclick="append('8')">8</button>
+<button onclick="append('9')">9</button>
+<button onclick="append('/')" class="operator">÷</button>
+<button onclick="append('sqrt(')">√</button>
+
+<button onclick="append('4')">4</button>
+<button onclick="append('5')">5</button>
+<button onclick="append('6')">6</button>
+<button onclick="append('*')" class="operator">×</button>
+<button onclick="append('^')">^</button>
+
+<button onclick="append('1')">1</button>
+<button onclick="append('2')">2</button>
+<button onclick="append('3')">3</button>
+<button onclick="append('-')" class="operator">-</button>
+<button onclick="append('PI')">π</button>
+
+<button onclick="append('0')">0</button>
+<button onclick="append('.')">.</button>
+<button onclick="append('+')" class="operator">+</button>
+<button onclick="append('E')">e</button>
+<button class="equal" onclick="calculate()">=</button>
+</div>
+
+<div id="history" class="history">
+  <div class="history-header">
+    <span>Histórico</span>
+    <button class="clear-history" onclick="clearHistory()">Limpar</button>
+  </div>
+  <div id="history-list"></div>
+</div>
+</div>
+
+<script>
+const display=document.getElementById('display');
+const historyDiv=document.getElementById('history');
+const historyList=document.getElementById('history-list');
+let shouldReset=false;
+
+historyList.innerHTML=localStorage.getItem('history')||'';
+
+function append(v){
+  if(shouldReset){display.innerText='0';shouldReset=false}
+  display.innerText=display.innerText==='0'?v:display.innerText+v;
+}
+
+function clearDisplay(){display.innerText='0'}
+function backspace(){display.innerText=display.innerText.slice(0,-1)||'0'}
+
+function percentFix(exp){return exp.replace(/(\d+(\.\d+)?)%/g,'($1/100)')}
+function toRad(x){return x*Math.PI/180}
+
+function evaluate(expr){
+  expr=percentFix(expr);
+
+  expr=expr
+    .replace(/sin\(([^)]+)\)/g,'Math.sin(toRad($1))')
+    .replace(/cos\(([^)]+)\)/g,'Math.cos(toRad($1))')
+    .replace(/tan\(([^)]+)\)/g,'Math.tan(toRad($1))')
+    .replace(/log/g,'Math.log10')
+    .replace(/ln/g,'Math.log')
+    .replace(/sqrt/g,'Math.sqrt')
+    .replace(/PI/g,'Math.PI')
+    .replace(/E/g,'Math.E')
+    .replace(/\^/g,'**');
+
+  return Function('toRad','return '+expr)(toRad);
+}
+
+function calculate(){
+  try{
+    const exp=display.innerText;
+    const result=evaluate(exp);
+    historyList.innerHTML+=`<div>${exp} = ${result}</div>`;
+    localStorage.setItem('history',historyList.innerHTML);
+    historyList.scrollTop = historyList.scrollHeight;
+    display.innerText=result;
+    shouldReset=true;
+  }catch{display.innerText='Erro'}
+}
+
+function toggleHistory(){
+  historyDiv.classList.toggle('open');
+}
+
+function clearHistory(){
+  historyList.innerHTML='';
+  localStorage.removeItem('history');
+}
+
+// teclado
+document.addEventListener('keydown',e=>{
+  if(/^[0-9]$/.test(e.key)) append(e.key);
+  if(['+','-','*','/','.','(',')','^'].includes(e.key)) append(e.key);
+  if(e.key==='Enter') calculate();
+  if(e.key==='Backspace') backspace();
+  if(e.key==='Escape') clearDisplay();
+});
+
+function toggleTheme(){
+  const t=document.body.getAttribute('data-theme');
+  document.body.setAttribute('data-theme',t==='dark'?'light':'dark');
+}
+</script>
+
+</body>
+</html>
+
+
